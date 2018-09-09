@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+<style>
+#info {
+  position: absolute;
+  top: 0px;
+  width: 100%;
+  padding: 10px;
+  text-align: center;
+  color: #ff0000;
+}
+
+#gui {
+    position: absolute;
+    top: 40px;
+    left: 20px;
+    height: 350px;
+}
+
+</style>
+</head>
+
+<body> 
+<div id="info">
+HomeWork12
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stats.js/r16/Stats.min.js"></script>
+<script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/MTLLoader.js"></script>
+<script src="https://rawgit.com/mrdoob/three.js/master/examples/js/loaders/OBJLoader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.5.1/dat.gui.min.js"></script>
+<script>
+
+var frame, scene, camera, renderer, light, controls;
+var angle = 0, k = 3;
+var stats;
+var gcontrols, helper, addcars = [];
+
+class Car{
+	constructor(model, posx){
+		this.angle = 0;
+		this.posx = posx;
+		this.model = model;
+		this.model.position.y += posx;
+	//	console.log('model = ' + this.model.position.x );
+		scene.add(this.model);
+	}
+
+	move(speed){
+		 
+       		 this.angle += 0.01*speed;
+	/*	console.log('angle = ' + this.angle);
+		console.log('speed = ' + speed );*/
+		let dx = ( -Math.cos(this.angle*k) * Math.sin(this.angle) ) - ( k*Math.cos(this.angle)*Math.sin(this.angle*k) );
+  
+ 		 let dy = ( Math.cos(this.angle*k) * Math.cos(this.angle) ) - ( k*Math.sin(this.angle)*Math.sin(this.angle*k)) ;
+		
+		this.model.rotation.y = Math.atan2 ( dy, dx);
+
+		 this.model.position.set (50*Math.cos(this.angle*k)*Math.cos(this.angle)+this.posx, 50*Math.cos(this.angle*k)*Math.sin(this.angle)+this.posx, 0);
+ 		 this.model.rotation.x = Math.PI/2;
+
+	}
+}
+
+
+init();
+animate();
+
+function init() {
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+  document.body.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
+  camera.position.z = 150;
+
+  stats = new Stats();
+  stats.showPanel(0);
+  stats.domElement.style.position = 'absolute';
+  stats.domElement.style.left = '0px';
+  stats.domElement.style.top = '0px';
+  document.body.appendChild( stats.domElement );
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+
+  
+  light = new THREE.PointLight(0xffffff, 1, 300);
+  light.position.set(0, 0, 50);
+  scene.add(light);
+  
+  helper = new THREE.PointLightHelper(light, 10);
+  scene.add(helper);
+  helper.visible = false;
+
+  var gridXY = new THREE.GridHelper(200, 20, 'red', 'grey');
+  scene.add(gridXY);
+  
+  gridXY.position.z = 0.5;
+  gridXY.rotation.x = (Math.PI/2);
+  var plane = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshPhongMaterial());
+  scene.add(plane);
+
+  readModel('Taxi');
+  
+  ////
+ gcontrols = new function() {
+        	this.speed = 0.5;
+        	this.turn = false;
+  	this.lightRotation = 0;
+        	this.pointLightHelper = false; 
+	this.addCar = function(){
+		if(frame !== undefined){
+			/*var mesh = frame.clone();
+			mesh.position.x = Math.random() * 50;
+			console.log(mesh.position.x );
+			addcars.push( mesh );
+			scene.add(mesh);*/
+
+			var x = Math.random()*50;
+			console.log('x = ' + x);
+			var mesh = new Car(frame.clone(), x);
+			addcars.push( mesh );
+			scene.add(mesh.model);
+		}
+	};
+	this.removeCar = function(){
+		if(frame !== undefined){
+			addcars.forEach(function(e) {
+				if(e.model !== undefined)
+     					scene.remove(e.model);
+    			})
+			addcars.lenght = 0;
+		}
+	};
+ };
+
+var gui = new dat.GUI();
+gui.domElement.id = 'gui';
+
+var f1 = gui.addFolder("Rose curve");
+ f1.add(gcontrols, 'speed', -1.5, 1.5);
+ f1.add(gcontrols, 'turn');
+var f2 = gui.addFolder("Point light");
+f2.add(gcontrols, 'lightRotation', -3.5, 3.5);
+f2.add(gcontrols, 'pointLightHelper');
+var f3 = gui.addFolder("Models");
+f3.add( gcontrols,   'addCar');
+f3.add( gcontrols,   'removeCar');
+
+}
+
+/// ReadModels
+function readModel (modelName, targetSize=40) {
+  var onProgress = function(xhr) {
+    if (xhr.lengthComputable) {
+      var percentComplete = xhr.loaded / xhr.total * 100;
+      console.log(Math.round(percentComplete, 2) + '% downloaded');
+    }
+  };
+  var onError = function(xhr) {};
+  var mtlLoader = new THREE.MTLLoader();
+  mtlLoader.setPath('models/');
+  mtlLoader.load(modelName+'.mtl', function(materials) {
+    materials.preload();
+    var objLoader = new THREE.OBJLoader();
+    objLoader.setMaterials(materials);
+    objLoader.setPath('models/');
+    objLoader.load(modelName+'.obj', function(object) {
+		
+		let theObject =  unitize (object, targetSize);
+		frame = theObject;
+		//theObject.name = 'OBJ'
+		//scene.add (theObject);
+		//frame = scene.getObjectByName ('OBJ');
+
+    }, onProgress, onError);
+  });
+}
+function unitize (object, targetSize) {  
+	
+	// find bounding box of 'object'
+	var box3 = new THREE.Box3();
+	box3.setFromObject (object);
+	var size = new THREE.Vector3();
+	size.subVectors (box3.max, box3.min);
+	var center = new THREE.Vector3();
+	center.addVectors(box3.max, box3.min).multiplyScalar (0.5);
+	
+	console.log ('center: ' + center.x + ', '+center.y + ', '+center.z );
+	console.log ('size: ' + size.x + ', ' +  size.y + ', '+size.z );
+	
+	// uniform scaling according to objSize
+	var objSize = Math.max (size.x, size.y, size.z);
+	var scaleSet = targetSize/objSize;
+				
+	var theObject =  new THREE.Object3D();
+	theObject.add (object);
+	object.scale.set (scaleSet, scaleSet, scaleSet);
+	object.position.set (-center.x*scaleSet, -center.y*scaleSet+10, -center.z*scaleSet);
+	
+	return theObject;
+			
+}
+
+///
+
+function animate() {
+	stats.begin();
+  controls.update();
+
+/*if (gcontrols.turn) 
+         angle += 0.01*gcontrols.speed;*/
+if(gcontrols.lightRotation)
+	light.position.set( 50*Math.cos(gcontrols.lightRotation), 50*Math.sin(gcontrols.lightRotation), 50);
+
+if (gcontrols.pointLightHelper){
+	if(helper.visible === false)
+  		helper.visible = true;
+}
+else {
+	if(helper.visible === true)
+		helper.visible = false;
+}
+
+/* if(frame!==undefined){
+
+ frame.position.set (50*Math.cos(angle*k)*Math.cos(angle)+50, 50*Math.cos(angle*k)*Math.sin(angle)+50, 0);
+  frame.rotation.x = Math.PI/2;
+  
+  var dx = ( -Math.cos(angle*k) * Math.sin(angle) ) - ( k*Math.cos(angle)*Math.sin(angle*k) );
+  
+  var dy = ( Math.cos(angle*k) * Math.cos(angle) ) - ( k*Math.sin(angle)*Math.sin(angle*k)) ;
+  
+  frame.rotation.y = Math.atan2 ( dy, dx);
+
+}*/
+ if(frame!==undefined  && gcontrols.turn){
+addcars.forEach(function(e) {
+	e.move(gcontrols.speed);     			
+})
+}
+
+  stats.end();
+  requestAnimationFrame(animate);
+  render();
+}
+
+function render() {
+  renderer.render(scene, camera);
+}
+
+
+
+</script>
+</body>
+
+</html>
