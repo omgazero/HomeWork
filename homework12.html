@@ -41,11 +41,13 @@ var stats;
 var gcontrols, helper, addcars = [];
 
 class Car{
-	constructor(model, posx){
+	constructor(model, posx, posy){
 		this.angle = 0;
 		this.posx = posx;
+		this.posy = posy;
 		this.model = model;
-		this.model.position.y += posx;
+		this.model.position.x += posx;
+		this.model.position.y += posy;
 	//	console.log('model = ' + this.model.position.x );
 		scene.add(this.model);
 	}
@@ -55,13 +57,14 @@ class Car{
        		 this.angle += 0.01*speed;
 	/*	console.log('angle = ' + this.angle);
 		console.log('speed = ' + speed );*/
+
 		let dx = ( -Math.cos(this.angle*k) * Math.sin(this.angle) ) - ( k*Math.cos(this.angle)*Math.sin(this.angle*k) );
   
  		 let dy = ( Math.cos(this.angle*k) * Math.cos(this.angle) ) - ( k*Math.sin(this.angle)*Math.sin(this.angle*k)) ;
 		
 		this.model.rotation.y = Math.atan2 ( dy, dx);
 
-		 this.model.position.set (50*Math.cos(this.angle*k)*Math.cos(this.angle)+this.posx, 50*Math.cos(this.angle*k)*Math.sin(this.angle)+this.posx, 0);
+		 this.model.position.set (50*Math.cos(this.angle*k)*Math.cos(this.angle)+this.posx, 50*Math.cos(this.angle*k)*Math.sin(this.angle)+this.posy, 0);
  		 this.model.rotation.x = Math.PI/2;
 
 	}
@@ -114,26 +117,21 @@ function init() {
   ////
  gcontrols = new function() {
         	this.speed = 0.5;
+	this.k = 3;
         	this.turn = false;
   	this.lightRotation = 0;
         	this.pointLightHelper = false; 
 	this.addCar = function(){
 		if(frame !== undefined){
-			/*var mesh = frame.clone();
-			mesh.position.x = Math.random() * 50;
-			console.log(mesh.position.x );
-			addcars.push( mesh );
-			scene.add(mesh);*/
 
-			var x = Math.random()*50;
-			console.log('x = ' + x);
-			var mesh = new Car(frame.clone(), x);
+			var mesh = new Car(frame.clone(), random(), random());
 			addcars.push( mesh );
 			scene.add(mesh.model);
 		}
 	};
 	this.removeCar = function(){
 		if(frame !== undefined){
+
 			addcars.forEach(function(e) {
 				if(e.model !== undefined)
      					scene.remove(e.model);
@@ -149,6 +147,7 @@ gui.domElement.id = 'gui';
 var f1 = gui.addFolder("Rose curve");
  f1.add(gcontrols, 'speed', -1.5, 1.5);
  f1.add(gcontrols, 'turn');
+f1.add(gcontrols, 'k', 3, 8);
 var f2 = gui.addFolder("Point light");
 f2.add(gcontrols, 'lightRotation', -3.5, 3.5);
 f2.add(gcontrols, 'pointLightHelper');
@@ -177,10 +176,8 @@ function readModel (modelName, targetSize=40) {
     objLoader.load(modelName+'.obj', function(object) {
 		
 		let theObject =  unitize (object, targetSize);
+		theObject.rotation.x = Math.PI/2;
 		frame = theObject;
-		//theObject.name = 'OBJ'
-		//scene.add (theObject);
-		//frame = scene.getObjectByName ('OBJ');
 
     }, onProgress, onError);
   });
@@ -217,8 +214,8 @@ function animate() {
 	stats.begin();
   controls.update();
 
-/*if (gcontrols.turn) 
-         angle += 0.01*gcontrols.speed;*/
+if(gcontrols.k)
+	k = gcontrols.k;
 if(gcontrols.lightRotation)
 	light.position.set( 50*Math.cos(gcontrols.lightRotation), 50*Math.sin(gcontrols.lightRotation), 50);
 
@@ -231,18 +228,6 @@ else {
 		helper.visible = false;
 }
 
-/* if(frame!==undefined){
-
- frame.position.set (50*Math.cos(angle*k)*Math.cos(angle)+50, 50*Math.cos(angle*k)*Math.sin(angle)+50, 0);
-  frame.rotation.x = Math.PI/2;
-  
-  var dx = ( -Math.cos(angle*k) * Math.sin(angle) ) - ( k*Math.cos(angle)*Math.sin(angle*k) );
-  
-  var dy = ( Math.cos(angle*k) * Math.cos(angle) ) - ( k*Math.sin(angle)*Math.sin(angle*k)) ;
-  
-  frame.rotation.y = Math.atan2 ( dy, dx);
-
-}*/
  if(frame!==undefined  && gcontrols.turn){
 addcars.forEach(function(e) {
 	e.move(gcontrols.speed);     			
@@ -258,7 +243,14 @@ function render() {
   renderer.render(scene, camera);
 }
 
-
+function random(){
+	let x = Math.floor(Math.random()*50);
+	let y = Math.floor(Math.random()*2);
+	if(y===0)
+		return x;
+	else 
+		return -x;
+}
 
 </script>
 </body>
